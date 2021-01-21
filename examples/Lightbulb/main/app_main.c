@@ -423,11 +423,11 @@ void temphum_task(void* argument){
     while(1){
         if(xSemaphoreTake(SHT20_mutex, (TickType_t)10) == pdTRUE){
             temphum temphumobj = readtemphum();
-            printf("%e\n", temphumobj.temp);
-            // xQueueSend(SHT20_queue, &temphumobj, 100 / portTICK_RATE_MS);
+            // printf("%e %e\n", temphumobj.hum, temphumobj.temp);
+            xQueueSend(SHT20_queue, &temphumobj, 100 / portTICK_RATE_MS);
             xSemaphoreGive(SHT20_mutex);
         }    
-        vTaskDelay(200 / portTICK_RATE_MS);
+        vTaskDelay(100 / portTICK_RATE_MS);
     }
 }
 

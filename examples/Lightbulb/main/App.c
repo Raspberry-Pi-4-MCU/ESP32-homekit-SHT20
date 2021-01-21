@@ -67,6 +67,11 @@ static pms5003t_data pms5003t_data_info = {
     .temperature = 0,
     .humidity = 0,
 };
+
+static temphum temperature_humidity_value = {
+    .temp = 0,
+    .hum = 0,
+};
 //----------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -130,10 +135,10 @@ static void SaveAccessoryState(void) {
  */
 static HAPAccessory accessory = { .aid = 1,
                                   .category = kHAPAccessoryCategory_Sensors,
-                                  .name = "airqualitydetect",
+                                  .name = "Temperature_Humidity",
                                   .manufacturer = "Bohung",
-                                  .model = "airqualitydetect1,1",
-                                  .serialNumber = "099FFF8E9999",
+                                  .model = "Temperature_Humidityt1,1",
+                                  .serialNumber = "0FFFFFFF8D2E",
                                   .firmwareVersion = "1",
                                   .hardwareVersion = "1",
                                   .services = (const HAPService* const[]) { &accessoryInformationService,
@@ -220,7 +225,13 @@ HAPError HandleTEMPRead(
         const HAPFloatCharacteristicReadRequest* request HAP_UNUSED,
         float* value,
         void* _Nullable context HAP_UNUSED){
-        *value = 2.0;
+        temphum temphumtmp;
+        if(xQueueReceive(SHT20_queue, &temphumtmp, 100 / portTICK_RATE_MS) == pdPASS){
+            if(temphumtmp.temp < 30 && temphumtmp.temp > 0){
+                temperature_humidity_value.temp = temphumtmp.temp;
+            }
+        }
+        *value = temperature_humidity_value.temp;
         return kHAPError_None;
 }  
 
@@ -278,7 +289,13 @@ HAPError HandleHumidityRead(
         const HAPFloatCharacteristicReadRequest* request,
         float* value,
         void* _Nullable context){
-        *value = 1.0;
+        temphum temphumtmp;
+        if(xQueueReceive(SHT20_queue, &temphumtmp, 100 / portTICK_RATE_MS) == pdPASS){
+            if(temphumtmp.hum < 100 && temphumtmp.hum > 0){
+                temperature_humidity_value.hum = temphumtmp.hum;
+            }
+        }
+        *value = temperature_humidity_value.hum;
         return kHAPError_None;  
 }
 //----------------------------------------------------------------------------------------------------------------------

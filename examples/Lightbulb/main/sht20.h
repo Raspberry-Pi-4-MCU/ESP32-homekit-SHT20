@@ -13,6 +13,7 @@ typedef struct temphum{
 void sht20_initial(int, int);
 float readhum(void);
 float readtemp(void);
+uint8_t readuserconfig(void);
 temphum readtemphum(void);
 
 #endif
