@@ -42,9 +42,9 @@ static void event_handle(void* arg, esp_event_base_t event_base,
         memcpy(password, evt->password, sizeof(evt->password));
         ESP_LOGI(TAG, "SSID:%s", ssid);
         ESP_LOGI(TAG, "PASSWORD:%s", password);
-        ESP_ERROR_CHECK( esp_wifi_disconnect() );
-        ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-        ESP_ERROR_CHECK( esp_wifi_connect());
+        ESP_ERROR_CHECK(esp_wifi_disconnect());
+        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+        ESP_ERROR_CHECK(esp_wifi_connect());
         // write NVS
         wificonfig_write(wifi_config);
     }else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
@@ -94,12 +94,13 @@ static void smartconfig_example_task(void * parm)
         uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
         if(uxBits & CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
-            spi_flash_erase_range(0x10000, 0x1000);
         }
         if(uxBits & ESPTOUCH_DONE_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
-            esp_smartconfig_stop();
+            ESP_ERROR_CHECK_WITHOUT_ABORT(esp_smartconfig_stop());
             vTaskDelay(5000 / portTICK_RATE_MS);
+            spi_flash_erase_range(0x10000, 0x1000);
+            vTaskDelay(200 / portTICK_RATE_MS);
             esp_restart();
             vTaskDelete(NULL);
         }
