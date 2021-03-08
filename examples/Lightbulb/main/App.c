@@ -60,14 +60,6 @@ typedef struct {
 
 static AccessoryConfiguration accessoryConfiguration;
 
-static pms5003t_data pms5003t_data_info = {
-    .PM1_0 = 0,
-    .PM2_5 = 0,
-    .PM10 = 0,
-    .temperature = 0,
-    .humidity = 0,
-};
-
 static temphum temperature_humidity_value = {
     .temp = 0,
     .hum = 0,
@@ -137,14 +129,13 @@ static HAPAccessory accessory = { .aid = 1,
                                   .category = kHAPAccessoryCategory_Sensors,
                                   .name = "Temperature_Humidity",
                                   .manufacturer = "Bohung",
-                                  .model = "Temperature_Humidityt1,1",
-                                  .serialNumber = "0FFFFFFF8D2E",
-                                  .firmwareVersion = "1",
-                                  .hardwareVersion = "1",
+                                  .model = "Temperature_Humidityt2,2",
+                                  .serialNumber = "368796029688",
+                                  .firmwareVersion = "2",
+                                  .hardwareVersion = "2",
                                   .services = (const HAPService* const[]) { &accessoryInformationService,
                                                                             &hapProtocolInformationService,
                                                                             &pairingService,
-                                                                            &lightBulbService,
                                                                             &TEMPService,
                                                                             &HumidityService,
                                                                             NULL },
@@ -162,64 +153,6 @@ HAPError IdentifyAccessory(
 }
 
 HAP_RESULT_USE_CHECK
-HAPError HandleLightBulbOnRead(
-        HAPAccessoryServerRef* server HAP_UNUSED,
-        const HAPBoolCharacteristicReadRequest* request HAP_UNUSED,
-        bool* value,
-        void* _Nullable context HAP_UNUSED) {
-    *value = accessoryConfiguration.state.lightBulbOn;
-    HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, *value ? "true" : "false");
-
-    return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleLightBulbOnWrite(
-        HAPAccessoryServerRef* server,
-        const HAPBoolCharacteristicWriteRequest* request,
-        bool value,
-        void* _Nullable context HAP_UNUSED) {
-    HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, value ? "true" : "false");
-    if (accessoryConfiguration.state.lightBulbOn != value) {
-        accessoryConfiguration.state.lightBulbOn = value;
-        unsigned long sig = 0;
-        if(value)
-            sig = 1;
-        xQueueSend(MsgQueue, &sig, 0);
-        SaveAccessoryState();
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
-    }
-
-    return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleCORead(
-        HAPAccessoryServerRef* server HAP_UNUSED,
-        const HAPFloatCharacteristicReadRequest* request HAP_UNUSED,
-        float* value,
-        void* _Nullable context){
-        *value = (int)(990.0 / adc1_get_raw(ADC1_CHANNEL_6)) + 10;
-        // *value = 200.0;
-        // printf("%d\n", adc1_get_raw(ADC1_CHANNEL_6));
-        return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleCODetectRead(
-        HAPAccessoryServerRef* server HAP_UNUSED,
-        const HAPUInt8CharacteristicReadRequest* request HAP_UNUSED,
-        uint8_t* value,
-        void* _Nullable context HAP_UNUSED){
-        float density = *value = (int)(990.0 / adc1_get_raw(ADC1_CHANNEL_6)) + 10;
-        if(density > 80)
-            *value = 1;
-        else
-            *value = 0;
-        return kHAPError_None;
-}   
-
-HAP_RESULT_USE_CHECK
 HAPError HandleTEMPRead(
         HAPAccessoryServerRef* server HAP_UNUSED,
         const HAPFloatCharacteristicReadRequest* request HAP_UNUSED,
@@ -233,55 +166,8 @@ HAPError HandleTEMPRead(
         }
         *value = temperature_humidity_value.temp;
         return kHAPError_None;
-}  
-
-HAP_RESULT_USE_CHECK
-HAPError HandleAirQualityRead(
-        HAPAccessoryServerRef* server,
-        const HAPUInt8CharacteristicReadRequest* request,
-        uint8_t* value,
-        void* _Nullable context){
-        *value = 1;
-        return kHAPError_None;
 }
 
-HAP_RESULT_USE_CHECK
-HAPError HandleAirQualityPM25Read(
-        HAPAccessoryServerRef* server,
-        const HAPFloatCharacteristicReadRequest* request,
-        float* value,
-        void* _Nullable context){
-        pms5003t_data pms5003t_data_tmp;
-        if(xQueueReceive(pms5003t_queue, &pms5003t_data_tmp, 1000 / portTICK_RATE_MS) == pdPASS){
-            if(pms5003t_data_tmp.PM2_5 <= 1000 && pms5003t_data_tmp.PM2_5 >= 0){
-                pms5003t_data_info.PM2_5 = pms5003t_data_tmp.PM2_5;
-            }
-        }
-        *value = (float)pms5003t_data_info.PM2_5;
-        /*
-        if(pms5003t_data_info.PM2_5 >= 1000 || pms5003t_data_info.PM2_5 <= 0)
-            *value = 0;
-        else
-            *value = (float)pms5003t_data_info.PM2_5;
-        */
-        return kHAPError_None;  
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleAirQualityPM10Read(
-        HAPAccessoryServerRef* server,
-        const HAPFloatCharacteristicReadRequest* request,
-        float* value,
-        void* _Nullable context){
-        pms5003t_data pms5003t_data_tmp;
-        if(xQueueReceive(pms5003t_queue, &pms5003t_data_tmp, 1000 / portTICK_RATE_MS) == pdPASS){
-            if(pms5003t_data_tmp.PM10 < 1000 && pms5003t_data_tmp.PM10 > 0){
-                pms5003t_data_info.PM10 = pms5003t_data_tmp.PM10;
-            }
-        }
-        *value = (float)pms5003t_data_info.PM10;
-        return kHAPError_None;
-}
 
 HAP_RESULT_USE_CHECK
 HAPError HandleHumidityRead(

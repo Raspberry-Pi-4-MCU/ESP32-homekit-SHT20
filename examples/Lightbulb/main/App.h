@@ -24,10 +24,11 @@ extern "C" {
 #pragma clang assume_nonnull begin
 #endif
 
-#include "ws2812b.h"
+#include "driver/gpio.h"
+#include "driver/rmt.h"
 #include "freertos/queue.h"
 #include "sht20.h"
-#include "PMS5003T.h"
+
 QueueHandle_t SHT20_queue;
 /**
  * Identify routine. Used to locate the accessory.
@@ -38,52 +39,9 @@ HAPError IdentifyAccessory(
         const HAPAccessoryIdentifyRequest* request,
         void* _Nullable context);
 
-/**
- * Handle read request to the 'On' characteristic of the Light Bulb service.
- */
-HAP_RESULT_USE_CHECK
-HAPError HandleLightBulbOnRead(
-        HAPAccessoryServerRef* server,
-        const HAPBoolCharacteristicReadRequest* request,
-        bool* value,
-        void* _Nullable context);
-
-/**
- * Handle write request to the 'On' characteristic of the Light Bulb service.
- */
-HAP_RESULT_USE_CHECK
-HAPError HandleLightBulbOnWrite(
-        HAPAccessoryServerRef* server,
-        const HAPBoolCharacteristicWriteRequest* request,
-        bool value,
-        void* _Nullable context);
 
 HAP_RESULT_USE_CHECK
 HAPError HandleTEMPRead(
-        HAPAccessoryServerRef* server,
-        const HAPFloatCharacteristicReadRequest* request,
-        float* value,
-        void* _Nullable context);
-
-/**
-*
-*/
-HAP_RESULT_USE_CHECK
-HAPError HandleAirQualityRead(
-        HAPAccessoryServerRef* server,
-        const HAPUInt8CharacteristicReadRequest* request,
-        uint8_t* value,
-        void* _Nullable context);
-
-HAP_RESULT_USE_CHECK
-HAPError HandleAirQualityPM25Read(
-        HAPAccessoryServerRef* server,
-        const HAPFloatCharacteristicReadRequest* request,
-        float* value,
-        void* _Nullable context);
-
-HAP_RESULT_USE_CHECK
-HAPError HandleAirQualityPM10Read(
         HAPAccessoryServerRef* server,
         const HAPFloatCharacteristicReadRequest* request,
         float* value,

@@ -8,7 +8,8 @@
 #define HUMIDITY_DELAY 20
 #define TEMPERATURE_DELAY 50
 
-static uint8_t CRC_Check(uint8_t *ptr, uint8_t len, uint8_t checksum){
+static uint8_t CRC_Check(uint8_t *ptr, uint8_t len, uint8_t checksum)
+{
     uint8_t i; 
     uint8_t crc = 0x00;
     while(len--)
@@ -28,7 +29,8 @@ static uint8_t CRC_Check(uint8_t *ptr, uint8_t len, uint8_t checksum){
         return 1;
 }
 
-void sht20_initial(int scl_pin, int sda_pin){
+void sht20_initial(int scl_pin, int sda_pin)
+{
     i2c_config_t conf = {
         .mode = I2C_MODE_MASTER,
         .sda_io_num = sda_pin,

@@ -36,11 +36,6 @@
 #define kIID_PairingPairingFeatures ((uint64_t) 0x0024)
 #define kIID_PairingPairingPairings ((uint64_t) 0x0025)
 
-#define kIID_LightBulb                 ((uint64_t) 0x0030)
-#define kIID_LightBulbServiceSignature ((uint64_t) 0x0031)
-#define kIID_LightBulbName             ((uint64_t) 0x0032)
-#define kIID_LightBulbOn               ((uint64_t) 0x0033)
-
 #define KIID_Air_Quality ((uint64_t) 0x0034)
 #define KIID_Air_Quality_PM25 ((uint64_t) 0x0035)
 #define KIID_Air_Quality_PM10 ((uint64_t) 0x0036)
@@ -409,148 +404,6 @@ const HAPService pairingService = {
 //----------------------------------------------------------------------------------------------------------------------
 
 /**
- * The 'Service Signature' characteristic of the Light Bulb service.
- */
-static const HAPDataCharacteristic lightBulbServiceSignatureCharacteristic = {
-    .format = kHAPCharacteristicFormat_Data,
-    .iid = kIID_LightBulbServiceSignature,
-    .characteristicType = &kHAPCharacteristicType_ServiceSignature,
-    .debugDescription = kHAPCharacteristicDebugDescription_ServiceSignature,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = false,
-                    .supportsEventNotification = false,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = true },
-                    .ble = { .supportsBroadcastNotification = false,
-                             .supportsDisconnectedNotification = false,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .constraints = { .maxLength = 2097152 },
-    .callbacks = { .handleRead = HAPHandleServiceSignatureRead, .handleWrite = NULL }
-};
-
-/**
- * The 'Name' characteristic of the Light Bulb service.
- */
-static const HAPStringCharacteristic lightBulbNameCharacteristic = {
-    .format = kHAPCharacteristicFormat_String,
-    .iid = kIID_LightBulbName,
-    .characteristicType = &kHAPCharacteristicType_Name,
-    .debugDescription = kHAPCharacteristicDebugDescription_Name,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = false,
-                    .supportsEventNotification = false,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = false,
-                             .supportsDisconnectedNotification = false,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .constraints = { .maxLength = 64 },
-    .callbacks = { .handleRead = HAPHandleNameRead, .handleWrite = NULL }
-};
-
-/**
- * The 'On' characteristic of the Light Bulb service.
- */
-const HAPBoolCharacteristic lightBulbOnCharacteristic = {
-    .format = kHAPCharacteristicFormat_Bool,
-    .iid = kIID_LightBulbOn,
-    .characteristicType = &kHAPCharacteristicType_On,
-    .debugDescription = kHAPCharacteristicDebugDescription_On,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = true,
-                    .supportsEventNotification = true,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = true,
-                             .supportsDisconnectedNotification = true,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .callbacks = { .handleRead = HandleLightBulbOnRead, .handleWrite = HandleLightBulbOnWrite }
-};
-
-/**
-* Air Quality
-*/
-const HAPUInt8Characteristic AirQualityDetectCharacteristic = {
-    .format = kHAPCharacteristicFormat_UInt8,
-    .iid = KIID_Air_Quality,
-    .characteristicType = &kHAPCharacteristicType_AirQuality,
-    .debugDescription = kHAPCharacteristicDebugDescription_AirQuality,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = false,
-                    .supportsEventNotification = true,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = true,
-                             .supportsDisconnectedNotification = true,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .constraints = { .maximumValue = 5, .minimumValue = 0 },
-    .callbacks = { .handleRead = HandleAirQualityRead, .handleWrite = NULL }
-};
-
-/**
-* PM25
-*/
-const HAPFloatCharacteristic AirQualityPM25DetectCharacteristic = {
-    .format = kHAPCharacteristicFormat_Float,
-    .iid = KIID_Air_Quality_PM25,
-    .characteristicType = &kHAPCharacteristicType_PM2_5Density,
-    .debugDescription = kHAPCharacteristicDebugDescription_PM2_5Density,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = false,
-                    .supportsEventNotification = true,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = true,
-                             .supportsDisconnectedNotification = true,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .constraints = { .maximumValue = 1000, .minimumValue = 0 },
-    .callbacks = { .handleRead = HandleAirQualityPM25Read, .handleWrite = NULL }
-};
-
-/**
-* PM10
-*/
-const HAPFloatCharacteristic AirQualityPM10DetectCharacteristic = {
-    .format = kHAPCharacteristicFormat_Float,
-    .iid = KIID_Air_Quality_PM10,
-    .characteristicType = &kHAPCharacteristicType_PM10Density,
-    .debugDescription = kHAPCharacteristicDebugDescription_PM10Density,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = false,
-                    .supportsEventNotification = true,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = true,
-                             .supportsDisconnectedNotification = true,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .constraints = { .maximumValue = 1000, .minimumValue = 0 },
-    .callbacks = { .handleRead = HandleAirQualityPM10Read, .handleWrite = NULL }
-};
-/**
 * Temperature 
 */
 const HAPFloatCharacteristic TEMPDetectCharacteristic = {
@@ -596,21 +449,6 @@ const HAPFloatCharacteristic HumidityDetectCharacteristic = {
     .constraints = { .maximumValue = 100, .minimumValue = 0 },
     .callbacks = { .handleRead = HandleHumidityRead, .handleWrite = NULL }
 };
-/**
- * The Light Bulb service that contains the 'On' characteristic.
- */
-const HAPService lightBulbService = {
-    .iid = kIID_LightBulb,
-    .serviceType = &kHAPServiceType_LightBulb,
-    .debugDescription = kHAPServiceDebugDescription_LightBulb,
-    .name = "Light Bulb",
-    .properties = { .primaryService = true, .hidden = false, .ble = { .supportsConfiguration = false } },
-    .linkedServices = NULL,
-    .characteristics = (const HAPCharacteristic* const[]) { &lightBulbServiceSignatureCharacteristic,
-                                                            &lightBulbNameCharacteristic,
-                                                            &lightBulbOnCharacteristic,
-                                                            NULL }
-};
 
 /**
 * Temperature
@@ -637,20 +475,5 @@ const HAPService HumidityService = {
     .properties = { .primaryService = true, .hidden = false, .ble = { .supportsConfiguration = false } },
     .linkedServices = NULL,
     .characteristics = (const HAPCharacteristic* const[]) { &HumidityDetectCharacteristic,
-                                                            NULL }
-};
-/**
-* AIR QUALITY
-*/
-const HAPService Air_QualityService = {
-    .iid = KIID_Air_Quality_Service,
-    .serviceType = &kHAPServiceType_AirQualitySensor,
-    .debugDescription = kHAPServiceDebugDescription_AirQualitySensor,
-    .name = "AIR_QUALITY",
-    .properties = { .primaryService = true, .hidden = false, .ble = { .supportsConfiguration = false } },
-    .linkedServices = NULL,
-    .characteristics = (const HAPCharacteristic* const[]) { &AirQualityPM10DetectCharacteristic,
-                                                            &AirQualityPM25DetectCharacteristic,
-                                                            &AirQualityDetectCharacteristic,
                                                             NULL }
 };

@@ -12,8 +12,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "driver/gpio.h"
-#include "driver/rmt.h"
 #include "driver/periph_ctrl.h"
+#include "freertos/queue.h"
 #include "App.h"
 #include "DB.h"
 #include "nvs_flash.h"
@@ -32,7 +32,6 @@
 #include "wificonfig.h"
 #include "wificonnect.h"
 #include "sht20.h"
-#include "PMS5003T.h"
 #if IP
 #include "HAPPlatformServiceDiscovery+Init.h"
 #include "HAPPlatformTCPStreamManager+Init.h"
@@ -41,11 +40,20 @@
 #include <signal.h>
 static bool requestedFactoryReset = false;
 static bool clearPairings = false;
-#define GPIO_INPUT_IO_0    19 // reset button
-#define GPIO_INPUT_PIN_SEL (1ULL<<GPIO_INPUT_IO_0)
-#define PREFERRED_ADVERTISING_INTERVAL (HAPBLEAdvertisingIntervalCreateFromMilliseconds(417.5f))
 
+/*  reset pin */
+#define GPIO_INPUT_IO_0    19
+#define GPIO_INPUT_PIN_SEL (1ULL<<GPIO_INPUT_IO_0)
+#define GPIO_OUTPUT_IO_0    18
+#define GPIO_OUTPUT_PIN_SEL (1ULL<<GPIO_OUTPUT_IO_0)
+
+/* Mutex for SHT20 */
 SemaphoreHandle_t SHT20_mutex;
+
+/* Queue for system led */
+QueueHandle_t sys_led_queue;
+
+#define PREFERRED_ADVERTISING_INTERVAL (HAPBLEAdvertisingIntervalCreateFromMilliseconds(417.5f))
 
 extern void smart_wifi(void);
 extern void app_wifi_init(void);
@@ -119,19 +127,25 @@ static void InitializePlatform() {
     platform.hapPlatform.accessorySetup = &accessorySetup;
     
     // Initialise Wi-Fi
-    unsigned long send_data_temp = 100;
-    xQueueSend(MsgQueue, &send_data_temp, 100 / portTICK_RATE_MS);
     wifi_start_connect();
-    // wait connect
-    while(1){
+
+    // Send signal for waiting
+    int32_t sys_led_status = 1;
+    xQueueSend(sys_led_queue, &sys_led_status, (TickType_t)10);
+
+    // Waiting for connecting
+    while(1) {
         EventBits_t uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT, true, false, 100 / portTICK_RATE_MS);
         if( (uxBits & CONNECTED_BIT) == CONNECTED_BIT){
             break;
         }
         vTaskDelay(100 / portTICK_RATE_MS);
     }
-    send_data_temp = 101;
-    xQueueSend(MsgQueue, &send_data_temp, 100 / portTICK_RATE_MS);
+
+    // Send signal completed
+    sys_led_status = 2;
+    xQueueSend(sys_led_queue, &sys_led_status, (TickType_t)10);
+
 #if IP
     // TCP stream manager.
     HAPPlatformTCPStreamManagerCreate(&platform.tcpStreamManager, &(const HAPPlatformTCPStreamManagerOptions) {
@@ -369,84 +383,113 @@ void main_task()
     DeinitializePlatform();
 }
 
-void task_led(void *argument){
-    ws2812b_t *led_strip = new_ws2812b(1, GPIO_NUM_18, RMT_CHANNEL_0);
-    uint8_t led_color_table[] = {0, 0, 0, 255, 128, 0, 0, 255, 128, 0, 0 ,255, 128, 128 ,0, 0, 128, 128};
-    uint8_t alarm_led[] = {0, 255, 0, 255 ,0 ,0};
-    uint8_t *ptr_led_color  = led_color_table;
-    uint8_t *ptr_alarm_led = alarm_led;
-    uint8_t *ptr_led = NULL;
-    uint32_t rcv = 0;
-    uint8_t light_idx = 0;
-    while(1){
-        rcv = 0;
-        if(xQueueReceive(MsgQueue, &rcv, 1000 / portTICK_RATE_MS) == pdPASS){
-            if(rcv == 100 || rcv == 101){
-                ptr_led = ptr_alarm_led + (rcv - 100) * 3;
+/**
+ * System led
+ * Blink: Waiting for connecting
+ * Bright: Power on
+ * Dark: Power off
+ */
+void sys_led(void *argument) 
+{
+    int32_t bright_delay_time = 0;
+    int32_t dark_delay_time = 0;
+    
+    int32_t sys_led_status_tmp = 0;
+    
+    while(1) {
+        /* Get delay time */
+        if(xQueueReceive(sys_led_queue, &(sys_led_status_tmp), (TickType_t)10) == pdPASS ) {
+            switch(sys_led_status_tmp) {
+            /* Blink */
+            case 1:
+                bright_delay_time = 200;
+                dark_delay_time = 200;
+                break;
+            /* Bright */
+            case 2:
+                bright_delay_time = 1000;
+                dark_delay_time = 0;
+                break;
+            /* Bright */
+            default:
+                bright_delay_time = 1000;
+                dark_delay_time = 0;
+                break;
             }
-            else { 
-                if(rcv){
-                    uint8_t led_offset;
-                    if(light_idx > (sizeof(led_color_table) - sizeof(uint8_t)) / 3)
-                        light_idx = 1;
-                    light_idx++;
-                    led_offset = (3 * light_idx);
-                    ptr_led_color = led_color_table + led_offset;
-                }
-                else
-                {
-                    ptr_led_color = led_color_table;
-                }
-                ptr_led = ptr_led_color;
-            }
-        }
-        set_pixel(led_strip, ptr_led);
-        vTaskDelay(pdMS_TO_TICKS(5));
-        led_flush(led_strip);
-        vTaskDelay(pdMS_TO_TICKS(5));
+        }   
+
+        /* Excute */
+        gpio_set_level(GPIO_NUM_18, 1);
+        vTaskDelay(bright_delay_time / portTICK_RATE_MS);
+        gpio_set_level(GPIO_NUM_18, 0);
+        vTaskDelay(dark_delay_time / portTICK_RATE_MS);
     }
 }
 
-void reset_func(void *argument){
-    while(1){
-        if(!gpio_get_level(GPIO_INPUT_IO_0)){
-            ESP_LOGI("Reset", "reset apple homekit paired");
+void reset_func(void *argument)
+{
+    while(1) {
+        /**
+         * GPIO 19 as input
+         */ 
+        if(!gpio_get_level(GPIO_INPUT_IO_0))
+        {
+            /* Erase wifi information and homekit key from nvs flash */
             spi_flash_erase_range(0x10000, 0x1000);
+
+            /* Waiting for processing */
             vTaskDelay(20 / portTICK_RATE_MS);
+
+            /* reboot after erasing */
             esp_restart();
         }
         vTaskDelay(1000 / portTICK_RATE_MS);
     }
 }
 
-void temphum_task(void* argument){
-    while(1){
-        if(xSemaphoreTake(SHT20_mutex, (TickType_t)10) == pdTRUE){
-            temphum temphumobj = readtemphum();
-            // printf("%e %e\n", temphumobj.hum, temphumobj.temp);
-            xQueueSend(SHT20_queue, &temphumobj, 100 / portTICK_RATE_MS);
-            xSemaphoreGive(SHT20_mutex);
-        }    
-        vTaskDelay(100 / portTICK_RATE_MS);
-    }
-}
+/**
+ * Read temperature and humidity from SHT20, and sending.
+ */ 
+void temphum_task(void* argument)
+{
+    temphum temphumobj;
 
-void pms5003t(void* argument){
-    pms5003t_data *new_pms5003t_data = pms5003t_initial(2);
-    pms5003t_data pms5003t_data_ll;
-    while(1){
-        pms5003t_read(new_pms5003t_data);
-        vTaskDelay(500 / portTICK_RATE_MS);
+    while(1) {
+        /* Avoid entering repeatedly */
+        if(xSemaphoreTake(SHT20_mutex, (TickType_t)10) == pdTRUE) {
+            /* Read temperature and humidity from sensor */
+            temphumobj = readtemphum();
+            
+            /* Send temperature and humidity to homekit */
+            xQueueSend(SHT20_queue, &temphumobj, 100 / portTICK_RATE_MS);
+
+            /*  Unlock mutex */
+            xSemaphoreGive(SHT20_mutex);
+        } 
+
+        vTaskDelay(100 / portTICK_RATE_MS);
     }
 }
 
 void app_main()
 {
+    /* Initial NVS flash */
     ESP_ERROR_CHECK(nvs_flash_init());
-    // spi_flash_init();
+    
+    /* Initial WIFI config*/
     wificonfig_initial();
-    MsgQueue = xQueueCreate(10, sizeof(unsigned long));
-    // reset
+
+    /**
+     * Initial queue for system led
+     * Length 5
+     */ 
+    sys_led_queue = xQueueCreate(5, sizeof(int32_t));
+
+    /**
+     * Configure reset pin 
+     * GPIO 19 as input pin
+     * not use interrupt
+     */
     gpio_config_t io_conf_reset = {
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_INPUT,
@@ -454,14 +497,43 @@ void app_main()
         .pull_down_en = 0,
     };
     gpio_config(&io_conf_reset);
-    // ADC initial
-    //adc1_config_width(ADC_WIDTH_BIT_12);
-    //adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_11);
+    
+    /**
+     * Configure led
+     * GPIO 18 as input pin
+     * not use interrupt
+     */
+    gpio_config_t io_conf_led = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = GPIO_OUTPUT_PIN_SEL,
+        .pull_down_en = 0,
+    };
+    gpio_config(&io_conf_led);
+
+    /**
+     *  Configure SHT20 device
+     *  GPIO 22 as SCL
+     *  GPIO 21 as SDA 
+     */
     sht20_initial(22, 21);
+    
+    /* Mutex SHT20 */
     SHT20_mutex = xSemaphoreCreateMutex();
+
+    /** 
+     * Create SHT20 queue
+     * Length 10
+     */
     SHT20_queue = xQueueCreate(10, sizeof(temphum));
-    // xTaskCreate(reset_func, "reset_func", 6 * 1024, NULL, 6, NULL);
+
+    /* Provide press event as reset function */
+    xTaskCreate(reset_func, "reset_func", 6 * 1024, NULL, 6, NULL);
+    
     xTaskCreate(main_task, "main_task", 6 * 1024, NULL, 5, NULL);
-    xTaskCreate(task_led, "task_led", 6 * 1024, NULL, 7, NULL);
+
+    xTaskCreate(sys_led, "sys_led", 6 * 1024, NULL, 9, NULL);
+
+    /* Read temperature and humidity from SHT20 sensor */
     xTaskCreate(temphum_task, "temphum_task", 6 * 1024, NULL, 8, NULL);
 }
