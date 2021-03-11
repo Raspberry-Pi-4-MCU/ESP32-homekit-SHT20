@@ -31,7 +31,9 @@
 #include "HAPPlatformRunLoop+Init.h"
 #include "wificonfig.h"
 #include "wificonnect.h"
+#include "resetful_api.h"
 #include "sht20.h"
+
 #if IP
 #include "HAPPlatformServiceDiscovery+Init.h"
 #include "HAPPlatformTCPStreamManager+Init.h"
@@ -58,6 +60,7 @@ QueueHandle_t sys_led_queue;
 extern void smart_wifi(void);
 extern void app_wifi_init(void);
 extern esp_err_t app_wifi_connect(wifi_config_t);
+
 /**
  * Global platform objects.
  * Only tracks objects that will be released in DeinitializePlatform.
@@ -145,6 +148,10 @@ static void InitializePlatform() {
     // Send signal completed
     sys_led_status = 2;
     xQueueSend(sys_led_queue, &sys_led_status, (TickType_t)10);
+
+    start_webserver();
+
+    // httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
 #if IP
     // TCP stream manager.
@@ -393,7 +400,6 @@ void sys_led(void *argument)
 {
     int32_t bright_delay_time = 0;
     int32_t dark_delay_time = 0;
-    
     int32_t sys_led_status_tmp = 0;
     
     while(1) {
@@ -473,6 +479,7 @@ void temphum_task(void* argument)
 
 void app_main()
 {
+    
     /* Initial NVS flash */
     ESP_ERROR_CHECK(nvs_flash_init());
     
@@ -528,7 +535,7 @@ void app_main()
     SHT20_queue = xQueueCreate(10, sizeof(temphum));
 
     /* Provide press event as reset function */
-    xTaskCreate(reset_func, "reset_func", 6 * 1024, NULL, 6, NULL);
+    // xTaskCreate(reset_func, "reset_func", 6 * 1024, NULL, 6, NULL);
     
     xTaskCreate(main_task, "main_task", 6 * 1024, NULL, 5, NULL);
 

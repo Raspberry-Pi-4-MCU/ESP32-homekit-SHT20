@@ -26,9 +26,9 @@
 //   6. Callbacks that notify the server in case their associated value has changed.
 
 #include "HAP.h"
-
 #include "App.h"
 #include "DB.h"
+#include "system_information.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -127,12 +127,12 @@ static void SaveAccessoryState(void) {
  */
 static HAPAccessory accessory = { .aid = 1,
                                   .category = kHAPAccessoryCategory_Sensors,
-                                  .name = "Temperature_Humidity",
-                                  .manufacturer = "Bohung",
-                                  .model = "Temperature_Humidityt2,2",
-                                  .serialNumber = "368796029688",
-                                  .firmwareVersion = "2",
-                                  .hardwareVersion = "2",
+                                  .name = PRODUCT_NAME,
+                                  .manufacturer = MANUFACTURER,
+                                  .model = MODEL,
+                                  .serialNumber = SERIALNUMBER,
+                                  .firmwareVersion = FIRMWAREVERSION,
+                                  .hardwareVersion = HARDWAREVERSION,
                                   .services = (const HAPService* const[]) { &accessoryInformationService,
                                                                             &hapProtocolInformationService,
                                                                             &pairingService,
@@ -160,7 +160,7 @@ HAPError HandleTEMPRead(
         void* _Nullable context HAP_UNUSED){
         temphum temphumtmp;
         if(xQueueReceive(SHT20_queue, &temphumtmp, 100 / portTICK_RATE_MS) == pdPASS){
-            if(temphumtmp.temp < 30 && temphumtmp.temp > 0){
+            if(temphumtmp.temp < 30 && temphumtmp.temp > 0) {
                 temperature_humidity_value.temp = temphumtmp.temp;
             }
         }
@@ -177,7 +177,7 @@ HAPError HandleHumidityRead(
         void* _Nullable context){
         temphum temphumtmp;
         if(xQueueReceive(SHT20_queue, &temphumtmp, 100 / portTICK_RATE_MS) == pdPASS){
-            if(temphumtmp.hum < 100 && temphumtmp.hum > 0){
+            if(temphumtmp.hum < 100 && temphumtmp.hum > 0) {
                 temperature_humidity_value.hum = temphumtmp.hum;
             }
         }
