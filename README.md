@@ -1,10 +1,23 @@
-# ESP32-homekit-ws2812
+# ESP32-homekit-SHT20
 
-This repository contains homekit and ws2812 driver
+This repository contains homekit, SHT20 driver and web server
 
 ## WIFI connect (using esptouch)
 
-Esptouch app at app store: [link](https://apps.apple.com/tw/app/espressif-esptouch/id1071176700)
+Esptouch app at app store: [link](https://apps.apple.com/tw/app/espressif-esptouch/id1071176700
+
+## Resetful API
+* system_infotmation
+  - URI: http://IP/system_infotmation
+  - Method: HTTP POST
+  - Request: Empty
+  - Response: {"Temperature":temperature_value, "Humidity":humidity}
+
+* tempertature_humidity
+  - URI: http://IP/tempertature_humidity
+  - Method: HTTP POST
+  - Request: Empty
+  - Response: {"PRODUCT_NAME":PRODUCT_NAME, "MANUFACTURER": MANUFACTURER, "MODEL":MODEL,"SERIALNUMBER":SERIALNUMBER}
 
 Please select EspTouch instead of EspTouchv2, when using app.
 
